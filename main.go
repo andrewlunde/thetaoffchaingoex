@@ -1,11 +1,17 @@
 package main
 
 import (
+	// "encoding/json"
     "fmt"
     "log"
     "net/http"
     "github.com/spf13/viper"
     geometry "github.com/andrewlunde/thetaoffchaingo"
+
+    "github.com/andrewlunde/greetings"
+
+    "github.com/thetatoken/theta/query"
+
 )
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +64,14 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintf(w, "Address = %s\n", address)
 }
 
+// Alice=2E833968E5bB786Ae419c4d13189fB081Cc43bab
+// Bob=70f587259738cB626A1720Af7038B8DcDb6a42a0
+// Carol=cd56123D0c5D6C1Ba4D39367b88cba61D93F5405
+// rid=rid1000001
+
+//cmd='thetacli tx reserve --chain="privatenet" --async --from='$Alice' --fund='$rfund' --collateral='$rcoll' --duration='$rfdurationblocks' --resource_ids='$rid' --seq='$ans' --password=qwertyuiop'
+
+
 func main() {
 
 	ellipse := geometry.Ellipse{
@@ -65,8 +79,25 @@ func main() {
 	}
 	fmt.Println(ellipse.GetEccentricity())
 
-    // dzero := common.JSONUint64(uint64(0)
-    // fmt.Println(dzero)
+    // A slice of names.
+    names := []string{"Andrew", "Dana", "Birdie"}
+
+    // Request a greeting message.
+    message, err := greetings.Hellos(names)
+    // If an error was returned, print it to the console and
+    // exit the program.
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // If no error was returned, print the returned message
+    // to the console.
+    fmt.Println(message)
+
+    endpoint := "https://theta-dev-theta-privatenet.cfapps.eu10.hana.ondemand.com/rpc"
+    address := "0x2E833968E5bB786Ae419c4d13189fB081Cc43bab"
+    query.Account(endpoint,address)
+
 
     fileServer := http.FileServer(http.Dir("./static")) 
     http.Handle("/", fileServer) 
