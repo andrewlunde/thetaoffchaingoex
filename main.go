@@ -48,8 +48,8 @@ func linksHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<a href=\"/offchain/hello\">hello</a><br />\n")
 	fmt.Fprintf(w, "<a href=\"/index.html\">index</a><br />\n")
 	fmt.Fprintf(w, "<a href=\"/form.html\">form</a><br />\n")
-	fmt.Fprintf(w, "<a href=\"/offchain/addr\">addr</a><br />\n")
-	fmt.Fprintf(w, "<a href=\"/offchain/reserve\">reserve</a><br />\n")
+	fmt.Fprintf(w, "<a href=\"/offchain/addr\" target=\"addr\">addr</a><br />\n")
+	fmt.Fprintf(w, "<a href=\"/offchain/reserve\" target=\"reserve\">reserve</a><br />\n")
 	// w.Write(data)
 }
 
@@ -109,6 +109,7 @@ func acctHandler(w http.ResponseWriter, r *http.Request) {
 
 	var reserve_seq = ""
 	var payment_seq = "1"
+	var accum_tfuel = ""
 
 	fmt.Fprintf(w, "nextseq: %d<br />\n", nextseq)
 
@@ -146,10 +147,26 @@ func acctHandler(w http.ResponseWriter, r *http.Request) {
 							ps := svc_pmt["payment_sequence"]
 
 							payment_seq = ps.(string)
+
 							//payment_seq = value2.(data)["service_payment"].(data)["payment_sequence"].(string)
 							payseq, _ := strconv.Atoi(payment_seq)
 							payseq++
 							payment_seq = fmt.Sprintf("%d", payseq)
+
+							src := svc_pmt["source"]
+							coin_src := src.(map[string]interface{})
+
+							scoins := coin_src["coins"]
+							scoinsparts := scoins.(map[string]interface{})
+
+							tfws := scoinsparts["tfuelwei"].(string)
+
+							tfwf, _ := strconv.ParseFloat(tfws, 64)
+
+							tfwf = tfwf / 1000000000000000000.0
+							tfwf += 20.000
+							accum_tfuel = fmt.Sprintf("%f", tfwf)
+
 							//fmt.Fprintf(w, "value2:%s<br />\n", value2.(data)["service_payment"].(data)["payment_sequence"].(string))
 							// 	}
 						}
@@ -163,7 +180,11 @@ func acctHandler(w http.ResponseWriter, r *http.Request) {
 
 						fmt.Fprintf(w, "reserve_sequence: %s<br />\n", reserve_seq)
 						fmt.Fprintf(w, "payment_sequence: %s<br />\n", payment_seq)
+
 						fmt.Fprintf(w, "<a href=\"/offchain/payment?from=%s&to=%s&payment_seq=%s&reserve_seq=%s&resource_id=%s&tfuel=%s&password=%s&on_chain=false\">off-chain payment</a><br />\n", tx.Alice, tx.Bob, payment_seq, reserve_seq, resource_id, tfuel, password)
+						if accum_tfuel != "" {
+							fmt.Fprintf(w, "<a href=\"/offchain/payment?from=%s&to=%s&payment_seq=%s&reserve_seq=%s&resource_id=%s&tfuel=%s&password=%s&on_chain=false\">off-chain payment +%s</a><br />\n", tx.Alice, tx.Bob, payment_seq, reserve_seq, resource_id, accum_tfuel, password, accum_tfuel)
+						}
 					}
 				} else {
 					fmt.Fprintf(w, "empty <a href=\"/offchain/reserve\">reserve</a> <br />\n")
@@ -279,9 +300,14 @@ func paymentHandler(w http.ResponseWriter, r *http.Request) {
 		src_sig := rquery.Get("src_sig")
 		tx.SetSourceSig(tx.ServicePaymentCmd, src_sig)
 		tx.SetOnChain(tx.ServicePaymentCmd, true)
+	} else {
+		tx.SetSourceSig(tx.ServicePaymentCmd, "")
+		tx.SetOnChain(tx.ServicePaymentCmd, false)
 	}
 
 	tx.SetDebugging(tx.ServicePaymentCmd, false)
+
+	// Check to see if the ReserveFund is still there...
 
 	output := tx.DoServicePayment()
 	//output := tx.ReserveFund(reserveFundCmd, make([]string, 0))
@@ -303,6 +329,15 @@ func paymentHandler(w http.ResponseWriter, r *http.Request) {
 		src_src := result2["source"]
 		src_sig := src_src.(map[string]interface{})
 		fmt.Fprintf(w, "<a href=\"/offchain/payment?from=%s&to=%s&payment_seq=%s&reserve_seq=%s&resource_id=%s&tfuel=%s&password=%s&on_chain=true&src_sig=%s&\">on-chain payment src_sig = %s</a><br />\n", from, to, payment_seq, reserve_seq, resource_id, tfuel, password, src_sig["signature"], src_sig["signature"])
+
+		tfwf, _ := strconv.ParseFloat(tfuel, 64)
+
+		tfwf += 20.000
+		accum_tfuel := fmt.Sprintf("%f", tfwf)
+
+		fmt.Fprintf(w, "<br /> -OR- <br /><br />\n")
+
+		fmt.Fprintf(w, "<a href=\"/offchain/payment?from=%s&to=%s&payment_seq=%s&reserve_seq=%s&resource_id=%s&tfuel=%s&password=%s&on_chain=false&\">off-chain payment %s</a><br />\n", from, to, payment_seq, reserve_seq, resource_id, accum_tfuel, password, accum_tfuel)
 		// } else {
 
 	} else {
